@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+package prover_network;
+
+option go_package = "github.com/brevis-network/prover-network-gateway/client/serviceapi";
+
+service ProverNetwork {
+  // register a new application with elf
+  rpc RegisterApp(RegisterAppRequest) returns (RegisterAppResponse);
+
+  // estimate gas cost
+  rpc EstimateCost(EstimateCostRequest) returns (EstimateCostResponse);
+
+  // add a proving task
+  rpc ProveTask(ProveTaskRequest) returns (ProveTaskResponse);
+
+  // try to fetch the proving result if complete
+  rpc GetProvingResult(GetProvingResultRequest)
+      returns (GetProvingResultResponse);
+}
+
+message ErrMsg {
+  ErrCode code = 1;
+  string msg = 2;
+}
+
+enum ErrCode {
+  OK = 0;
+  // invalid arguments
+  INVAL = 1;
+  // internal error
+  INTERNAL = 2;
+  // proving in-progress
+  PROVING_PENDING = 3;
+  // proving failed
+  PROVING_FAILED = 4;
+}
+
+message RegisterAppRequest {
+  // application hash
+  string app_id = 1;
+  // program elf data
+  bytes elf = 2;
+  // optional program information
+  optional string info = 3;
+}
+
+message RegisterAppResponse {
+  // common result
+  ErrMsg err = 1;
+}
+
+message EstimateCostRequest {
+  // application hash
+  string app_id = 1;
+  // input array, empty if no inputs
+  repeated bytes inputs = 2;
+}
+
+message EstimateCostResponse {
+  // common result
+  ErrMsg err = 1;
+  // gas cost
+  uint32 cost = 2;
+  // public values digest
+  bytes pv_digest = 3;
+}
+
+message ProveTaskRequest {
+  // application hash
+  string app_id = 1;
+  // proving task ID, it should be unique for this application
+  string task_id = 2;
+  // input array, empty if no inputs
+  repeated bytes inputs = 3;
+}
+
+message ProveTaskResponse {
+  // common result
+  ErrMsg err = 1;
+}
+
+message GetProvingResultRequest {
+  // application hash
+  string app_id = 1;
+  // proving task ID, it should be unique for this application
+  string task_id = 2;
+}
+
+message GetProvingResultResponse {
+  // common result
+  ErrMsg err = 1;
+  // groth16 proof, it's valid if the result code is `OK`
+  optional bytes proof = 2;
+}
