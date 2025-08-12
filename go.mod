@@ -6,7 +6,9 @@ toolchain go1.23.12
 
 require (
 	github.com/celer-network/goutils v0.2.1
+	github.com/cockroachdb/cockroach-go/v2 v2.4.1
 	github.com/ethereum/go-ethereum v1.11.5
+	github.com/lib/pq v1.10.9
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
