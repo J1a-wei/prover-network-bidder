@@ -9,27 +9,81 @@ import (
 	"context"
 )
 
-const addApp = `-- name: AddApp :exec
-INSERT INTO app (
-        app_id,
-        img_url,
-        registered
-    )
-VALUES (
-        $1,
-        $2,
-        $3
-    )
+const addProofRequest = `-- name: AddProofRequest :exec
+INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
-type AddAppParams struct {
+type AddProofRequestParams struct {
+	ReqID              string `json:"req_id"`
+	AppID              string `json:"app_id"`
+	Nonce              int64  `json:"nonce"`
+	PublicValuesDigest string `json:"public_values_digest"`
+	InputData          string `json:"input_data"`
+	InputUrl           string `json:"input_url"`
+	MaxFee             string `json:"max_fee"`
+	MinStake           string `json:"min_stake"`
+	Deadline           int64  `json:"deadline"`
+	CreatedAt          int64  `json:"created_at"`
+}
+
+func (q *Queries) AddProofRequest(ctx context.Context, arg AddProofRequestParams) error {
+	_, err := q.db.ExecContext(ctx, addProofRequest,
+		arg.ReqID,
+		arg.AppID,
+		arg.Nonce,
+		arg.PublicValuesDigest,
+		arg.InputData,
+		arg.InputUrl,
+		arg.MaxFee,
+		arg.MinStake,
+		arg.Deadline,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const findNotRegisteredApps = `-- name: FindNotRegisteredApps :many
+SELECT app_id, img_url, registered FROM app
+WHERE registered = false
+`
+
+func (q *Queries) FindNotRegisteredApps(ctx context.Context) ([]App, error) {
+	rows, err := q.db.QueryContext(ctx, findNotRegisteredApps)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []App
+	for rows.Next() {
+		var i App
+		if err := rows.Scan(&i.AppID, &i.ImgUrl, &i.Registered); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const saveApp = `-- name: SaveApp :exec
+INSERT INTO app (app_id, img_url, registered )
+VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
+`
+
+type SaveAppParams struct {
 	AppID      string `json:"app_id"`
 	ImgUrl     string `json:"img_url"`
 	Registered bool   `json:"registered"`
 }
 
-func (q *Queries) AddApp(ctx context.Context, arg AddAppParams) error {
-	_, err := q.db.ExecContext(ctx, addApp, arg.AppID, arg.ImgUrl, arg.Registered)
+func (q *Queries) SaveApp(ctx context.Context, arg SaveAppParams) error {
+	_, err := q.db.ExecContext(ctx, saveApp, arg.AppID, arg.ImgUrl, arg.Registered)
 	return err
 }
 
@@ -49,6 +103,17 @@ func (q *Queries) SelectMonitorBlock(ctx context.Context, event string) (Monitor
 		&i.Restart,
 	)
 	return i, err
+}
+
+const updateAppAsRegistered = `-- name: UpdateAppAsRegistered :exec
+UPDATE app
+SET registered = true
+WHERE app_id = $1
+`
+
+func (q *Queries) UpdateAppAsRegistered(ctx context.Context, appID string) error {
+	_, err := q.db.ExecContext(ctx, updateAppAsRegistered, appID)
+	return err
 }
 
 const upsertMonitorBlock = `-- name: UpsertMonitorBlock :exec

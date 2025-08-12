@@ -30,6 +30,7 @@ type ChainClient struct {
 	*ethutils.Transactor
 	*mon2.Monitor
 	*dal.DAL
+	*eth.BrevisMarket
 }
 
 func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
@@ -48,6 +49,9 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 	bidder, addr, err := createSigner(c.BidderEthAddr, c.BidderKeystore, chid)
 	if err != nil {
 		return nil, fmt.Errorf("CreateSigner err: %w", err)
+	}
+	if addr != common.HexToAddress(c.BidderEthAddr) {
+		return nil, fmt.Errorf("bidder eth addr mismatch! cfg as %s but %s from keystore", c.BidderEthAddr, addr.String())
 	}
 	transactor := ethutils.NewTransactorByExternalSigner(
 		addr,
@@ -69,8 +73,12 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NewMonitor err: %w", err)
 	}
+	brevisMarket, err := eth.NewBrevisMarket(common.HexToAddress(c.BrevisMarketAddr), ec)
+	if err != nil {
+		return nil, fmt.Errorf("NewBrevisMarket err: %w", err)
+	}
 
-	return &ChainClient{c, ec, transactor, mon, db}, nil
+	return &ChainClient{c, ec, transactor, mon, db, brevisMarket}, nil
 }
 
 // funcs for monitor brevis events
@@ -101,7 +109,49 @@ func (c *ChainClient) marketCallback(evname string, elog ethtypes.Log) {
 }
 
 func (c *ChainClient) handleNewRequest(eLog ethtypes.Log) {
-	// TODO
+	ev, err := c.ParseNewRequest(eLog)
+	if err != nil {
+		log.Errorf("ParseNewRequest err %s, data %+v", err, eLog)
+		return
+	}
+	log.Infof("MonEv -  NewRequest: reqId %x, req %+v", ev.Reqid, ev.Req)
+
+	err = c.SaveApp(context.Background(), dal.SaveAppParams{
+		AppID:      common.Bytes2Hex(ev.Req.Vk[:]),
+		ImgUrl:     ev.Req.ImgURL,
+		Registered: false,
+	})
+	if err != nil {
+		log.Errorf("SaveApp err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+		// continue to save proof request, in case app can be saved by other req or manually
+	}
+
+	inputData := ""
+	for _, i := range ev.Req.InputData {
+		inputData += inputData + common.Bytes2Hex(i) + ","
+	}
+
+	header, err := c.HeaderByNumber(context.Background(), big.NewInt(int64(eLog.BlockNumber)))
+	if err != nil {
+		log.Errorf("HeaderByNumber err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+		return
+	}
+
+	err = c.AddProofRequest(context.Background(), dal.AddProofRequestParams{
+		ReqID:              common.Bytes2Hex(ev.Reqid[:]),
+		AppID:              common.Bytes2Hex(ev.Req.Vk[:]),
+		Nonce:              int64(ev.Req.Nonce),
+		PublicValuesDigest: common.Bytes2Hex(ev.Req.PublicValuesDigest[:]),
+		InputData:          inputData,
+		InputUrl:           ev.Req.InputURL,
+		MaxFee:             ev.Req.Fee.MaxFee.String(),
+		MinStake:           ev.Req.Fee.MinStake.String(),
+		Deadline:           int64(ev.Req.Fee.Deadline),
+		CreatedAt:          int64(header.Time),
+	})
+	if err != nil {
+		log.Errorf("AddProofRequest err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+	}
 }
 
 const awskmsPre = "awskms"
