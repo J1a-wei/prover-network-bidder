@@ -3,6 +3,7 @@ package config
 type Config struct {
 	ChainID          uint64 `mapstructure:"submit_chain_id"`
 	ChainRpc         string `mapstructure:"submit_chain_rpc"`
+	BlkInterval      uint64 `mapstructure:"blk_interval"`
 	BrevisMarketAddr string `mapstructure:"brevis_market_addr"`
 
 	BidderEthAddr    string `mapstructure:"bidder_eth_addr"`

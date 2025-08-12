@@ -19,7 +19,7 @@ solc --overwrite --optimize --via-ir --pretty-json \
   $contractdir/BrevisMarket.sol
 
 echo "run abigen"
-abigen -combined-json $out/combined.json -pkg ozproxy -out ../eth/bindings.go
+abigen -combined-json $out/combined.json -pkg eth -out ../eth/bindings.go
 echo "clean up"
 rm -rf $contractroot/out
 echo "done"
