@@ -87,3 +87,24 @@ func ChkQueryRow(err error) (bool, error) {
 	}
 	return found, err
 }
+
+func (db *DAL) SetMonitorBlock(event string, blockNum uint64, blockIdx int64) error {
+	return db.UpsertMonitorBlock(context.Background(), UpsertMonitorBlockParams{
+		Event:    event,
+		BlockNum: int64(blockNum),
+		BlockIdx: blockIdx,
+		Restart:  false,
+	})
+}
+
+func (db *DAL) GetMonitorBlock(event string) (blknum uint64, blkidx int64, found bool, err error) {
+	o, err := db.SelectMonitorBlock(context.Background(), event)
+	found, err = ChkQueryRow(err)
+	if err != nil {
+		return 0, 0, false, err
+	}
+	if !found {
+		return 0, 0, false, nil
+	}
+	return uint64(o.BlockNum), o.BlockIdx, true, nil
+}

@@ -7,6 +7,7 @@ SET DATABASE TO bidder;
 CREATE TABLE IF NOT EXISTS app (
     app_id TEXT NOT NULL, -- hex of vk, bytes32
     img_url TEXT NOT NULL,
+    registered BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (app_id)
 );
 
@@ -44,6 +45,14 @@ CREATE TABLE IF NOT EXISTS my_bid (
     proof TEXT NOT NULL DEFAULT '',
     proof_submit_tx TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (req_id)
+);
+
+CREATE TABLE IF NOT EXISTS monitor_block (
+    event TEXT NOT NULL,
+    block_num BIGINT NOT NULL,
+    block_idx BIGINT NOT NULL,
+    restart BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (event)
 );
 
 -- NOTE: For CockroachSQL, sqlc has issue with this, need to run manually

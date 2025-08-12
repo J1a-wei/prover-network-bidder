@@ -12,20 +12,67 @@ import (
 const addApp = `-- name: AddApp :exec
 INSERT INTO app (
         app_id,
-        img_url
+        img_url,
+        registered
     )
 VALUES (
         $1,
-        $2
+        $2,
+        $3
     )
 `
 
 type AddAppParams struct {
-	AppID  string `json:"app_id"`
-	ImgUrl string `json:"img_url"`
+	AppID      string `json:"app_id"`
+	ImgUrl     string `json:"img_url"`
+	Registered bool   `json:"registered"`
 }
 
 func (q *Queries) AddApp(ctx context.Context, arg AddAppParams) error {
-	_, err := q.db.ExecContext(ctx, addApp, arg.AppID, arg.ImgUrl)
+	_, err := q.db.ExecContext(ctx, addApp, arg.AppID, arg.ImgUrl, arg.Registered)
+	return err
+}
+
+const selectMonitorBlock = `-- name: SelectMonitorBlock :one
+SELECT event, block_num, block_idx, restart 
+FROM monitor_block
+WHERE event = $1
+`
+
+func (q *Queries) SelectMonitorBlock(ctx context.Context, event string) (MonitorBlock, error) {
+	row := q.db.QueryRowContext(ctx, selectMonitorBlock, event)
+	var i MonitorBlock
+	err := row.Scan(
+		&i.Event,
+		&i.BlockNum,
+		&i.BlockIdx,
+		&i.Restart,
+	)
+	return i, err
+}
+
+const upsertMonitorBlock = `-- name: UpsertMonitorBlock :exec
+INSERT INTO monitor_block (event, block_num, block_idx, restart) 
+VALUES ($1, $2, $3, $4) ON CONFLICT (event) DO
+UPDATE
+SET block_num = excluded.block_num,
+    block_idx = excluded.block_idx,
+    restart = restart
+`
+
+type UpsertMonitorBlockParams struct {
+	Event    string `json:"event"`
+	BlockNum int64  `json:"block_num"`
+	BlockIdx int64  `json:"block_idx"`
+	Restart  bool   `json:"restart"`
+}
+
+func (q *Queries) UpsertMonitorBlock(ctx context.Context, arg UpsertMonitorBlockParams) error {
+	_, err := q.db.ExecContext(ctx, upsertMonitorBlock,
+		arg.Event,
+		arg.BlockNum,
+		arg.BlockIdx,
+		arg.Restart,
+	)
 	return err
 }
