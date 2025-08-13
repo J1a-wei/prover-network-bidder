@@ -40,3 +40,12 @@ WHERE req_id = $1;
 -- name: AddBid :exec
 INSERT INTO my_bid (req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before)
 VALUES ($1, $2, $3, $4, $5);
+
+-- name: FindToBeRevealedBid :many
+SELECT * FROM my_bid
+WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_before);
+
+-- name: UpdateBidAsRevealed :exec
+UPDATE my_bid
+SET revealed = true
+WHERE req_id = $1;

@@ -137,6 +137,46 @@ func (q *Queries) FindNotRegisteredApps(ctx context.Context) ([]App, error) {
 	return items, nil
 }
 
+const findToBeRevealedBid = `-- name: FindToBeRevealedBid :many
+SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, success, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
+WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_before)
+`
+
+func (q *Queries) FindToBeRevealedBid(ctx context.Context, shouldRevealAfter int64) ([]MyBid, error) {
+	rows, err := q.db.QueryContext(ctx, findToBeRevealedBid, shouldRevealAfter)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MyBid
+	for rows.Next() {
+		var i MyBid
+		if err := rows.Scan(
+			&i.ReqID,
+			&i.MyFee,
+			&i.BidNonce,
+			&i.ShouldRevealAfter,
+			&i.ShouldRevealBefore,
+			&i.Revealed,
+			&i.Success,
+			&i.ProofTaskID,
+			&i.ProofState,
+			&i.Proof,
+			&i.ProofSubmitTx,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveApp = `-- name: SaveApp :exec
 INSERT INTO app (app_id, img_url, registered )
 VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
@@ -179,6 +219,17 @@ WHERE app_id = $1
 
 func (q *Queries) UpdateAppAsRegistered(ctx context.Context, appID string) error {
 	_, err := q.db.ExecContext(ctx, updateAppAsRegistered, appID)
+	return err
+}
+
+const updateBidAsRevealed = `-- name: UpdateBidAsRevealed :exec
+UPDATE my_bid
+SET revealed = true
+WHERE req_id = $1
+`
+
+func (q *Queries) UpdateBidAsRevealed(ctx context.Context, reqID string) error {
+	_, err := q.db.ExecContext(ctx, updateBidAsRevealed, reqID)
 	return err
 }
 

@@ -38,6 +38,7 @@ func NewScheduler(db *dal.DAL, c *onchain.ChainClient, p *client.ProverNetworkCl
 func (s *Scheduler) Start() {
 	go s.scheduleAppRegister()
 	go s.scheduleBid()
+	go s.scheduleReveal()
 	go s.scheduleProve()
 }
 
@@ -144,6 +145,35 @@ func (s *Scheduler) scheduleBid() {
 			})
 			if err != nil {
 				log.Errorf("AddBid %s err: %s", req.ReqID, err)
+			}
+		}
+	}
+}
+
+func (s *Scheduler) scheduleReveal() {
+	for {
+		time.Sleep(5 * time.Second)
+		bids, err := s.FindToBeRevealedBid(context.Background(), time.Now().Unix())
+		if err != nil {
+			log.Errorf("FindToBeRevealedBid err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			myFee, _ := big.NewInt(0).SetString(bid.MyFee, 0)
+			nonce, _ := big.NewInt(0).SetString(bid.BidNonce, 0)
+			tx, _, err := onchain.TransactWaitSuccess(
+				s.Client, s.TransactOpts,
+				func(transactor bind.ContractTransactor, opts *bind.TransactOpts) (*ethtypes.Transaction, error) {
+					return s.Reveal(opts, common.HexToHash(bid.ReqID), myFee, nonce)
+				})
+			if err != nil {
+				log.Errorf("Reveal err: %s", err)
+				continue
+			}
+			log.Infof("Reveal tx %s", tx.Hash().Hex())
+			err = s.UpdateBidAsRevealed(context.Background(), bid.ReqID)
+			if err != nil {
+				log.Errorf("UpdateBidAsRevealed %s err: %s", bid.ReqID, err)
 			}
 		}
 	}
