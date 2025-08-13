@@ -1,5 +1,5 @@
 -- name: SaveApp :exec
-INSERT INTO app (app_id, img_url, registered )
+INSERT INTO app (app_id, img_url, registered)
 VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;
 
 -- name: AddProofRequest :exec
@@ -50,7 +50,7 @@ UPDATE my_bid
 SET revealed = true
 WHERE req_id = $1;
 
--- name: FindBidWithoutResult :many
+-- name: FindBidsWithoutResult :many
 SELECT * FROM my_bid
 WHERE bid_result = '' AND should_reveal_before < $1;
 
@@ -58,3 +58,14 @@ WHERE bid_result = '' AND should_reveal_before < $1;
 UPDATE my_bid
 SET bid_result = $1
 WHERE req_id = $2;
+
+-- name: FindToBeProvedBids :many
+SELECT b.*, p.app_id, p.input_data, p.input_url FROM my_bid b
+INNER JOIN proof_request p
+ON b.req_id = p.req_id
+WHERE b.bid_result = 'success' AND b.proof_task_id = ''
+AND p.deadline > $1;
+
+-- name: UpdateBidProofTaskId :exec
+UPDATE my_bid
+SET proof_task_id = $1 AND proof_state = 'init';

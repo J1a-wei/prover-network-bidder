@@ -69,13 +69,13 @@ func (q *Queries) AddProofRequest(ctx context.Context, arg AddProofRequestParams
 	return err
 }
 
-const findBidWithoutResult = `-- name: FindBidWithoutResult :many
+const findBidsWithoutResult = `-- name: FindBidsWithoutResult :many
 SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
 WHERE bid_result = '' AND should_reveal_before < $1
 `
 
-func (q *Queries) FindBidWithoutResult(ctx context.Context, shouldRevealBefore int64) ([]MyBid, error) {
-	rows, err := q.db.QueryContext(ctx, findBidWithoutResult, shouldRevealBefore)
+func (q *Queries) FindBidsWithoutResult(ctx context.Context, shouldRevealBefore int64) ([]MyBid, error) {
+	rows, err := q.db.QueryContext(ctx, findBidsWithoutResult, shouldRevealBefore)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +177,69 @@ func (q *Queries) FindNotRegisteredApps(ctx context.Context) ([]App, error) {
 	return items, nil
 }
 
+const findToBeProvedBids = `-- name: FindToBeProvedBids :many
+SELECT b.req_id, b.my_fee, b.bid_nonce, b.should_reveal_after, b.should_reveal_before, b.revealed, b.bid_result, b.proof_task_id, b.proof_state, b.proof, b.proof_submit_tx, p.app_id, p.input_data, p.input_url FROM my_bid b
+INNER JOIN proof_request p
+ON b.req_id = p.req_id
+WHERE b.bid_result = 'success' AND b.proof_task_id = ''
+AND p.deadline > $1
+`
+
+type FindToBeProvedBidsRow struct {
+	ReqID              string `json:"req_id"`
+	MyFee              string `json:"my_fee"`
+	BidNonce           string `json:"bid_nonce"`
+	ShouldRevealAfter  int64  `json:"should_reveal_after"`
+	ShouldRevealBefore int64  `json:"should_reveal_before"`
+	Revealed           bool   `json:"revealed"`
+	BidResult          string `json:"bid_result"`
+	ProofTaskID        string `json:"proof_task_id"`
+	ProofState         string `json:"proof_state"`
+	Proof              string `json:"proof"`
+	ProofSubmitTx      string `json:"proof_submit_tx"`
+	AppID              string `json:"app_id"`
+	InputData          string `json:"input_data"`
+	InputUrl           string `json:"input_url"`
+}
+
+func (q *Queries) FindToBeProvedBids(ctx context.Context, deadline int64) ([]FindToBeProvedBidsRow, error) {
+	rows, err := q.db.QueryContext(ctx, findToBeProvedBids, deadline)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindToBeProvedBidsRow
+	for rows.Next() {
+		var i FindToBeProvedBidsRow
+		if err := rows.Scan(
+			&i.ReqID,
+			&i.MyFee,
+			&i.BidNonce,
+			&i.ShouldRevealAfter,
+			&i.ShouldRevealBefore,
+			&i.Revealed,
+			&i.BidResult,
+			&i.ProofTaskID,
+			&i.ProofState,
+			&i.Proof,
+			&i.ProofSubmitTx,
+			&i.AppID,
+			&i.InputData,
+			&i.InputUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findToBeRevealedBid = `-- name: FindToBeRevealedBid :many
 SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
 WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_before)
@@ -218,7 +281,7 @@ func (q *Queries) FindToBeRevealedBid(ctx context.Context, shouldRevealAfter int
 }
 
 const saveApp = `-- name: SaveApp :exec
-INSERT INTO app (app_id, img_url, registered )
+INSERT INTO app (app_id, img_url, registered)
 VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
 `
 
@@ -270,6 +333,16 @@ WHERE req_id = $1
 
 func (q *Queries) UpdateBidAsRevealed(ctx context.Context, reqID string) error {
 	_, err := q.db.ExecContext(ctx, updateBidAsRevealed, reqID)
+	return err
+}
+
+const updateBidProofTaskId = `-- name: UpdateBidProofTaskId :exec
+UPDATE my_bid
+SET proof_task_id = $1 AND proof_state = 'init'
+`
+
+func (q *Queries) UpdateBidProofTaskId(ctx context.Context, proofTaskID string) error {
+	_, err := q.db.ExecContext(ctx, updateBidProofTaskId, proofTaskID)
 	return err
 }
 

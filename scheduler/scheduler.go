@@ -51,9 +51,9 @@ func (s *Scheduler) scheduleAppRegister() {
 			log.Errorf("FindNotRegisteredApps err: %s", err)
 			continue
 		}
-		var elf []byte
-		// TODO: retrieve elf from img url
 		for _, app := range apps {
+			var elf []byte
+			// TODO: retrieve elf from img url
 			err = s.RegisterApp(app.AppID, "", elf)
 			if err != nil {
 				log.Errorf("RegisterApp %s err: %s", app.AppID, err)
@@ -77,9 +77,9 @@ func (s *Scheduler) scheduleBid() {
 			log.Errorf("FindNotProcessedProofRequests err: %s", err)
 			continue
 		}
-		var inputs [][]byte
-		// TODO: get inputs from req.InputData or req.InputUrl
 		for _, req := range reqs {
+			var inputs [][]byte
+			// TODO: get inputs from req.InputData or req.InputUrl
 			cost, pvDigest, err := s.EstimateCost(req.AppID, inputs)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
@@ -190,9 +190,9 @@ const (
 func (s *Scheduler) scheduleQueryBidResult() {
 	for {
 		time.Sleep(5 * time.Second)
-		bids, err := s.FindBidWithoutResult(context.Background(), time.Now().Unix())
+		bids, err := s.FindBidsWithoutResult(context.Background(), time.Now().Unix())
 		if err != nil {
-			log.Errorf("FindBidWithoutResult err: %s", err)
+			log.Errorf("FindBidsWithoutResult err: %s", err)
 			continue
 		}
 		for _, bid := range bids {
@@ -217,9 +217,34 @@ func (s *Scheduler) scheduleQueryBidResult() {
 	}
 }
 
+type ProofState string
+
+const (
+	Init      ProofState = "init"
+	Generated ProofState = "generated"
+	Submitted ProofState = "submitted"
+)
+
 func (s *Scheduler) scheduleProve() {
 	for {
 		time.Sleep(5 * time.Second)
-		// TODO
+		bids, err := s.FindToBeProvedBids(context.Background(), time.Now().Unix())
+		if err != nil {
+			log.Errorf("FindToBeProvedBids err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			var inputs [][]byte
+			// TODO: get inputs from bid.InputData or bid.InputUrl
+			err = s.ProveTask(bid.AppID, bid.ReqID, inputs)
+			if err != nil {
+				log.Errorf("ProveTask %s err: %s", bid.ReqID, err)
+				continue
+			}
+			err = s.UpdateBidProofTaskId(context.Background(), bid.ReqID) // use reqId as proofTaskId
+			if err != nil {
+				log.Errorf("UpdateBidProofTaskId %s err: %s", bid.ReqID, err)
+			}
+		}
 	}
 }
