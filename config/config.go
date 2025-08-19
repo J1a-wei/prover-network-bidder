@@ -1,8 +1,8 @@
 package config
 
 type ChainConfig struct {
-	ChainID          uint64 `mapstructure:"submit_chain_id"`
-	ChainRpc         string `mapstructure:"submit_chain_rpc"`
+	ChainID          uint64 `mapstructure:"chain_id"`
+	ChainRpc         string `mapstructure:"chain_rpc"`
 	BlkInterval      uint64 `mapstructure:"blk_interval"`
 	BlkDelay         uint64 `mapstructure:"blk_delay"`
 	MaxBlkDelta      uint64 `mapstructure:"max_blk_delta"`
