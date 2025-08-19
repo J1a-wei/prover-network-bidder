@@ -55,8 +55,14 @@ func (s *Scheduler) scheduleAppRegister() {
 			continue
 		}
 		for _, app := range apps {
-			var elf []byte
 			// TODO: retrieve elf from img url
+			// assume HTTP GET to downlaod
+			elf, err := DownloadFile(app.ImgUrl)
+			if err != nil {
+				log.Errorf("app %s, download %s err: %s", app.AppID, app.ImgUrl, err)
+				continue
+			}
+
 			err = s.RegisterApp(app.AppID, "", elf)
 			if err != nil {
 				log.Errorf("RegisterApp %s err: %s", app.AppID, err)
@@ -81,8 +87,13 @@ func (s *Scheduler) scheduleBid() {
 			continue
 		}
 		for _, req := range reqs {
-			var inputs [][]byte
 			// TODO: get inputs from req.InputData or req.InputUrl
+			inputs, err := retrieveInputs(req.InputData, req.InputUrl)
+			if err != nil {
+				log.Errorf("retrieveInputs for req %s err: %s", req.ReqID, err)
+				continue
+			}
+
 			cost, pvDigest, err := s.EstimateCost(req.AppID, inputs)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
@@ -152,6 +163,25 @@ func (s *Scheduler) scheduleBid() {
 			}
 		}
 	}
+}
+
+func retrieveInputs(inputData string, inputUrl string) ([][]byte, error) {
+	var inputs [][]byte
+	if inputData != "" {
+		inputHexes := strings.Split(inputData, ",")
+		for _, hex := range inputHexes {
+			inputs = append(inputs, common.Hex2Bytes(hex))
+		}
+	} else {
+		// assume HTTP GET to downlaod
+		input, err := DownloadFile(inputUrl)
+		if err != nil {
+			return nil, err
+		}
+		inputs = [][]byte{input}
+	}
+
+	return inputs, nil
 }
 
 func (s *Scheduler) scheduleReveal() {
@@ -237,8 +267,13 @@ func (s *Scheduler) scheduleProve() {
 			continue
 		}
 		for _, bid := range bids {
-			var inputs [][]byte
 			// TODO: get inputs from bid.InputData or bid.InputUrl
+			inputs, err := retrieveInputs(bid.InputData, bid.InputUrl)
+			if err != nil {
+				log.Errorf("retrieveInputs for req %s err: %s", bid.ReqID, err)
+				continue
+			}
+
 			err = s.ProveTask(bid.AppID, bid.ReqID, inputs)
 			if err != nil {
 				log.Errorf("ProveTask %s err: %s", bid.ReqID, err)
