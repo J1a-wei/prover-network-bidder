@@ -1,4 +1,4 @@
-package service
+package main
 
 import (
 	"github.com/brevis-network/prover-network-bidder/service"
