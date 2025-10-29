@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -11,6 +12,7 @@ import (
 	"github.com/brevis-network/prover-network-bidder/client"
 	"github.com/brevis-network/prover-network-bidder/config"
 	"github.com/brevis-network/prover-network-bidder/dal"
+	"github.com/brevis-network/prover-network-bidder/eth"
 	"github.com/brevis-network/prover-network-bidder/onchain"
 	"github.com/celer-network/goutils/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -160,11 +162,21 @@ func (s *Scheduler) scheduleBid() {
 					return s.Bid(opts, common.HexToHash(req.ReqID), common.BytesToHash(bidHash))
 				})
 			if err != nil {
-				log.Errorf("Bid err: %s", err)
-				// TODO: decode solidity custom error, and then decide whether to mark the request as processed
-				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
-				if err != nil {
-					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+				errString := err.Error()
+				var jsonErr JsonError
+				errJson, _ := json.Marshal(err)
+				json.Unmarshal(errJson, &jsonErr)
+				if jsonErr.Data != "" {
+					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errString = errString + " - " + errName
+				}
+				log.Errorf("Bid err: %s", errString)
+
+				if jsonErr.Data != "" /*not satisfy contract requirement*/ {
+					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					if err != nil {
+						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+					}
 				}
 				continue
 			}

@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func DownloadFile(url string) ([]byte, error) {
@@ -22,4 +26,29 @@ func DownloadFile(url string) ([]byte, error) {
 	}
 
 	return bodyBytes, nil
+}
+
+type JsonError struct {
+	Code    int
+	Message string
+	Data    string
+}
+
+func ParseSolCustomErrorName(contractABI string, errData []byte) (string, error) {
+	if len(errData) < 4 {
+		return "", fmt.Errorf("invalid errData")
+	}
+
+	parsedABI, err := abi.JSON(strings.NewReader(contractABI))
+	if err != nil {
+		return "", fmt.Errorf("abi.JSON err: %s", err)
+	}
+
+	for _, errDef := range parsedABI.Errors {
+		if common.Bytes2Hex(errData[:4]) == common.Bytes2Hex(errDef.ID[:4]) {
+			return errDef.Name, nil
+		}
+	}
+
+	return "", nil
 }
