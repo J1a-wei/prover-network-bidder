@@ -257,7 +257,15 @@ func (s *Scheduler) scheduleReveal() {
 					return s.Reveal(opts, common.HexToHash(bid.ReqID), myFee, nonce)
 				})
 			if err != nil {
-				log.Errorf("Reveal err: %s", err)
+				errString := err.Error()
+				var jsonErr JsonError
+				errJson, _ := json.Marshal(err)
+				json.Unmarshal(errJson, &jsonErr)
+				if jsonErr.Data != "" {
+					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errString = errString + " - " + errName
+				}
+				log.Errorf("Reveal err: %s", errString)
 				continue
 			}
 			log.Infof("Reveal tx %s", tx.Hash().Hex())
@@ -399,7 +407,15 @@ func (s *Scheduler) scheduleSubmitProof() {
 					return s.SubmitProof(opts, common.HexToHash(bid.ReqID), proof)
 				})
 			if err != nil {
-				log.Errorf("SubmitProof err: %s", err)
+				errString := err.Error()
+				var jsonErr JsonError
+				errJson, _ := json.Marshal(err)
+				json.Unmarshal(errJson, &jsonErr)
+				if jsonErr.Data != "" {
+					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errString = errString + " - " + errName
+				}
+				log.Errorf("SubmitProof err: %s", errString)
 				continue
 			}
 			log.Infof("SubmitProof tx %s", tx.Hash().Hex())
