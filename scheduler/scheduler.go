@@ -170,11 +170,11 @@ func (s *Scheduler) scheduleBid() {
 					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
-				log.Errorf("Bid err: %s", errString)
+				log.Errorf("Bid req %s err: %s", req.ReqID, errString)
 
 				abi, _ := eth.BrevisMarketMetaData.GetAbi()
 				calldata, _ := abi.Pack("bid", common.HexToHash(req.ReqID), common.BytesToHash(bidHash))
-				log.Infof("Bid calldata: %x", calldata)
+				log.Infof("Bid req %s calldata: %x", req.ReqID, calldata)
 
 				if jsonErr.Data != "" /*not satisfy contract requirement*/ {
 					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
@@ -184,7 +184,7 @@ func (s *Scheduler) scheduleBid() {
 				}
 				continue
 			}
-			log.Infof("Bid tx %s", tx.Hash().Hex())
+			log.Infof("Bid req %s tx %s", req.ReqID, tx.Hash().Hex())
 			err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 			if err != nil {
 				log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
@@ -269,10 +269,10 @@ func (s *Scheduler) scheduleReveal() {
 					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
-				log.Errorf("Reveal err: %s", errString)
+				log.Errorf("Reveal req %s err: %s", bid.ReqID, errString)
 				continue
 			}
-			log.Infof("Reveal tx %s", tx.Hash().Hex())
+			log.Infof("Reveal req %s tx %s", bid.ReqID, tx.Hash().Hex())
 			err = s.UpdateBidAsRevealed(context.Background(), bid.ReqID)
 			if err != nil {
 				log.Errorf("UpdateBidAsRevealed %s err: %s", bid.ReqID, err)
@@ -299,7 +299,7 @@ func (s *Scheduler) scheduleQueryBidResult() {
 		for _, bid := range bids {
 			reqState, err := s.Requests(nil, common.HexToHash(bid.ReqID))
 			if err != nil {
-				log.Errorf("Requests err: %s", err)
+				log.Errorf("Requests req %s err: %s", bid.ReqID, err)
 				continue
 			}
 
@@ -419,10 +419,10 @@ func (s *Scheduler) scheduleSubmitProof() {
 					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
-				log.Errorf("SubmitProof err: %s", errString)
+				log.Errorf("SubmitProof req %s err: %s", bid.ReqID, errString)
 				continue
 			}
-			log.Infof("SubmitProof tx %s", tx.Hash().Hex())
+			log.Infof("SubmitProof req %s tx %s", bid.ReqID, tx.Hash().Hex())
 			err = s.UpdateBidAsProofSubmitted(context.Background(), dal.UpdateBidAsProofSubmittedParams{
 				ProofSubmitTx: tx.Hash().Hex(),
 				ReqID:         bid.ReqID,
