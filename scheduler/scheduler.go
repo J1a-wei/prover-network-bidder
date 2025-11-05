@@ -153,8 +153,8 @@ func (s *Scheduler) scheduleBid() {
 			// submit bid if pass rule
 			nonce := big.NewInt(int64(rand.Uint64()))
 			bidHash := solsha3.SoliditySHA3(
-				[]string{"uint256", "uint256"},
-				[]interface{}{myFee, nonce},
+				[]string{"bytes32", "address", "uint256", "uint256"},
+				[]interface{}{common.HexToHash(req.ReqID), common.HexToAddress(s.ProverEthAddr), myFee, nonce},
 			)
 			tx, _, err := onchain.TransactWaitSuccess(
 				s.Client, s.TransactOpts,
