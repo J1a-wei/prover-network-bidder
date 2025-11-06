@@ -104,6 +104,15 @@ func (s *Scheduler) scheduleBid() {
 			continue
 		}
 		for _, req := range reqs {
+			if req.CreatedAt+int64(s.BiddingPhaseDuration)+int64(s.RevealPhaseDuration)+int64(s.ruleConfig.ProveMinDuration) > req.Deadline {
+				log.Infof("req %s deadline %d too soon", req.ReqID, req.Deadline)
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+				}
+				continue
+			}
+
 			if req.InputData == "" {
 				ok, err := checkInputSize(req.InputUrl, s.ruleConfig.MaxInputSize)
 				if err != nil {

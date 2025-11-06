@@ -20,4 +20,6 @@ type RuleConfig struct {
 	MaxFee         string `mapstructure:"max_fee"`
 	// max input size,  default 0 means no limit. if this value is non-zero, and request input is larger, skip request.
 	MaxInputSize uint64 `mapstructure:"max_input_size"`
+	// accepts only those requests that the duration from prove start time to deadline not less than `ProveMinDuration`
+	ProveMinDuration uint64 `mapstructure:"prove_min_duration"`
 }
