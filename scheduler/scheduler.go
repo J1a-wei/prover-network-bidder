@@ -114,6 +114,41 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
+			vk := common.HexToHash(req.AppID)
+			skip := false
+			for _, b := range s.ruleConfig.VkBlacklist {
+				if vk == common.HexToHash(b) {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				log.Infof("req %s app %s is in blacklist", req.ReqID, req.AppID)
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+				}
+				continue
+			}
+
+			if len(s.ruleConfig.VkWhitelist) != 0 {
+				skip := true
+				for _, w := range s.ruleConfig.VkWhitelist {
+					if vk == common.HexToHash(w) {
+						skip = false
+						break
+					}
+				}
+				if skip {
+					log.Infof("req %s app %s is not in whitelist", req.ReqID, req.AppID)
+					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					if err != nil {
+						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+					}
+					continue
+				}
+			}
+
 			if req.InputData == "" {
 				ok, err := checkInputSize(req.InputUrl, s.ruleConfig.MaxInputSize)
 				if err != nil {
