@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client"
+	"github.com/brevis-network/prover-network-bidder/client/serviceapi"
 	"github.com/brevis-network/prover-network-bidder/config"
 	"github.com/brevis-network/prover-network-bidder/dal"
 	"github.com/brevis-network/prover-network-bidder/eth"
@@ -132,9 +133,15 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
-			proverGas, pvDigest, err := s.EstimateCost(req.AppID, inputs)
+			proverGas, pvDigest, errCode, err := s.EstimateCost(req.AppID, inputs)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
+				if errCode == serviceapi.ErrCode_INPUT_EXCEEDED {
+					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					if err != nil {
+						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+					}
+				}
 				continue
 			}
 			if common.BytesToHash(pvDigest) != common.HexToHash(req.PublicValuesDigest) {

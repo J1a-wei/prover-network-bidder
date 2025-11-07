@@ -34,6 +34,8 @@ enum ErrCode {
   PROVING_PENDING = 3;
   // proving failed
   PROVING_FAILED = 4;
+  // input exceeds supported maximum emulation cycles
+  INPUT_EXCEEDED = 5;
 }
 
 message RegisterAppRequest {

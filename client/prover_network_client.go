@@ -42,19 +42,19 @@ func (c *ProverNetworkClient) RegisterApp(info string, elf []byte) (string, erro
 	return resp.AppId, nil
 }
 
-func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost uint64, pvDigest []byte, err error) {
+func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost uint64, pvDigest []byte, errCode serviceapi.ErrCode, err error) {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).EstimateCost(context.Background(), &serviceapi.EstimateCostRequest{
 		AppId:  appId,
 		Inputs: inputs,
 	})
 	if err != nil {
-		return 0, []byte{}, err
+		return 0, []byte{}, 0, err
 	}
 	if resp.GetErr() != nil {
 		log.Errorf("EstimateCost err: %s", resp.GetErr().GetMsg())
-		return 0, []byte{}, fmt.Errorf("EstimateCost err: %s", resp.GetErr().GetMsg())
+		return 0, []byte{}, resp.GetErr().GetCode(), fmt.Errorf("EstimateCost err: %s", resp.GetErr().GetMsg())
 	}
-	return resp.Cost, resp.PvDigest, nil
+	return resp.Cost, resp.PvDigest, 0, nil
 }
 
 func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs []byte) error {
