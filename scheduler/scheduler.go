@@ -60,8 +60,7 @@ func (s *Scheduler) scheduleAppRegister() {
 			continue
 		}
 		for _, app := range apps {
-			// TODO: retrieve elf from img url
-			// assume HTTP GET to downlaod
+			// fetch binary from url, support http/file
 			elf, err := DownloadFile(app.ImgUrl)
 			if err != nil {
 				log.Errorf("app %s, download %s err: %s", app.AppID, app.ImgUrl, err)

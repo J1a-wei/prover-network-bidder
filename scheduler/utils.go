@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	ulib "net/url"
+	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -11,6 +13,17 @@ import (
 )
 
 func DownloadFile(url string) ([]byte, error) {
+	if strings.HasPrefix(url, "file://") {
+		u, err := ulib.Parse(url)
+		if err != nil {
+			return nil, fmt.Errorf("invalid file url %v", err)
+		}
+		raw, err := os.ReadFile(u.Path)
+		if err != nil {
+			return nil, fmt.Errorf("open file %s err: %v", u.Path, err)
+		}
+		return raw, nil
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("get err %s", err)
