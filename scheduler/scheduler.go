@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client"
@@ -189,8 +190,14 @@ func (s *Scheduler) scheduleBid() {
 			}
 
 			log.Infof("req %s prover gas %d", req.ReqID, proverGas)
+			proverGasStr := strconv.FormatUint(proverGas, 10)
+			proverGasInt, _ := big.NewInt(0).SetString(proverGasStr, 10)
 			proverGasPrice, _ := big.NewInt(0).SetString(s.ruleConfig.ProverGasPrice, 0)
-			myFee := big.NewInt(0).Mul(proverGasPrice, big.NewInt(int64(proverGas)))
+			myFee := big.NewInt(0).Mul(proverGasPrice, proverGasInt)
+			myFee.Div(myFee, big.NewInt(1e9)) // s.ruleConfig.ProverGasPrice in decimals 9
+			if myFee.Sign() == 0 {
+				myFee = big.NewInt(1) // at least 1
+			}
 			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
 
 			if myFee.Cmp(maxFee) == 1 {

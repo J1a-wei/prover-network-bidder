@@ -16,7 +16,7 @@ type ChainConfig struct {
 
 // demo purpose, rule params to be determined by business
 type RuleConfig struct {
-	// prove cycle * prover gas price = estimated cost (bid fee)
+	// prove cycle * prover gas price = estimated cost (bid fee), in decimals 9
 	ProverGasPrice string `mapstructure:"prover_gas_price"`
 	// skip the requests that the calculated bid fee exceeds the `max_fee`
 	MaxFee string `mapstructure:"max_fee"`
