@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client"
@@ -70,8 +71,26 @@ func (s *Scheduler) scheduleAppRegister() {
 			log.Infof("Start register app %s...", app.AppID)
 			retAppId, err := s.RegisterApp("", elf)
 			if err != nil {
-				log.Errorf("RegisterApp %s err: %s", app.AppID, err)
-				continue
+				if strings.Contains(err.Error(), "app already exists") {
+					log.Infoln(err)
+					if !strings.Contains(err.Error(), app.AppID) {
+						errMsg := fmt.Sprintf("request appId %s not match the calc one", app.AppID)
+						log.Errorln(errMsg)
+						err = s.UpdateAppAsRegisterFailed(context.Background(), dal.UpdateAppAsRegisterFailedParams{
+							AppID:         app.AppID,
+							RegisterError: errMsg,
+						})
+						if err != nil {
+							log.Errorf("UpdateAppAsRegisterFailed %s err: %s", app.AppID, err)
+						}
+						continue
+					} else {
+						retAppId = app.AppID
+					}
+				} else {
+					log.Errorf("RegisterApp %s err: %s", app.AppID, err)
+					continue
+				}
 			}
 			log.Infof("End register app %s", app.AppID)
 
