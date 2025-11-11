@@ -194,7 +194,7 @@ func (s *Scheduler) scheduleBid() {
 			proverGasInt, _ := big.NewInt(0).SetString(proverGasStr, 10)
 			proverGasPrice, _ := big.NewInt(0).SetString(s.ruleConfig.ProverGasPrice, 0)
 			myFee := big.NewInt(0).Mul(proverGasPrice, proverGasInt)
-			myFee.Div(myFee, big.NewInt(1e9)) // s.ruleConfig.ProverGasPrice in decimals 9
+			myFee.Div(myFee, big.NewInt(1e9)) // s.ruleConfig.ProverGasPrice with a default 1e9 denominator
 			if myFee.Sign() == 0 {
 				myFee = big.NewInt(1) // at least 1
 			}
