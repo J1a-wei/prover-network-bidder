@@ -252,7 +252,7 @@ func (s *Scheduler) scheduleBid() {
 				errJson, _ := json.Marshal(err)
 				json.Unmarshal(errJson, &jsonErr)
 				if jsonErr.Data != "" && jsonErr.Data != "0x" {
-					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errName, _ := ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
 				log.Errorf("Bid req %s err: %s", req.ReqID, errString)
@@ -351,7 +351,7 @@ func (s *Scheduler) scheduleReveal() {
 				errJson, _ := json.Marshal(err)
 				json.Unmarshal(errJson, &jsonErr)
 				if jsonErr.Data != "" && jsonErr.Data != "0x" {
-					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errName, _ := ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
 				log.Errorf("Reveal req %s err: %s", bid.ReqID, errString)
@@ -508,7 +508,7 @@ func (s *Scheduler) scheduleSubmitProof() {
 				errJson, _ := json.Marshal(err)
 				json.Unmarshal(errJson, &jsonErr)
 				if jsonErr.Data != "" && jsonErr.Data != "0x" {
-					errName, _ := ParseSolCustomErrorName(eth.BrevisMarketABI, common.FromHex(jsonErr.Data))
+					errName, _ := ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
 				log.Errorf("SubmitProof req %s err: %s", bid.ReqID, errString)
