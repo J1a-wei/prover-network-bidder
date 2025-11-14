@@ -384,6 +384,17 @@ func (q *Queries) FindToBeRevealedBid(ctx context.Context, shouldRevealAfter int
 	return items, nil
 }
 
+const resetAppAsNotRegister = `-- name: ResetAppAsNotRegister :exec
+UPDATE app
+SET register_status = ''
+WHERE app_id = $1
+`
+
+func (q *Queries) ResetAppAsNotRegister(ctx context.Context, appID string) error {
+	_, err := q.db.ExecContext(ctx, resetAppAsNotRegister, appID)
+	return err
+}
+
 const saveApp = `-- name: SaveApp :exec
 INSERT INTO app (app_id, img_url, register_status, register_error)
 VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING

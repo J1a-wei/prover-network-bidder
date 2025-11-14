@@ -33,6 +33,11 @@ UPDATE app
 SET register_status = 'failed', register_error = $2
 WHERE app_id = $1;
 
+-- name: ResetAppAsNotRegister :exec
+UPDATE app
+SET register_status = ''
+WHERE app_id = $1;
+
 -- name: FindNotProcessedProofRequests :many
 SELECT p.* FROM proof_request p
 INNER JOIN app a ON p.app_id = a.app_id

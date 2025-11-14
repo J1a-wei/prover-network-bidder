@@ -203,6 +203,11 @@ func (s *Scheduler) scheduleBid() {
 					if err != nil {
 						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
 					}
+				} else if strings.Contains(err.Error(), "cannot find app") {
+					err = s.ResetAppAsNotRegister(context.Background(), req.AppID)
+					if err != nil {
+						log.Errorf("ResetAppAsNotRegister %s err: %s", req.AppID, err)
+					}
 				}
 				continue
 			}
