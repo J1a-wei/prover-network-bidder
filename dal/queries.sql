@@ -86,7 +86,7 @@ WHERE req_id = $2;
 SELECT b.*, p.app_id FROM my_bid b
 INNER JOIN proof_request p
 ON b.req_id = p.req_id
-WHERE proof_state = 'init';
+WHERE b.proof_state = 'init' AND p.deadline > CAST(now() as BIGINT);
 
 -- name: UpdateBidWithProof :exec
 UPDATE my_bid
