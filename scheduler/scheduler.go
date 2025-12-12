@@ -514,11 +514,22 @@ func (s *Scheduler) scheduleSubmitProof() {
 				var jsonErr JsonError
 				errJson, _ := json.Marshal(err)
 				json.Unmarshal(errJson, &jsonErr)
+				var errName string
 				if jsonErr.Data != "" && jsonErr.Data != "0x" {
-					errName, _ := ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
+					errName, _ = ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
 				log.Errorf("SubmitProof req %s err: %s", bid.ReqID, errString)
+
+				if errName == "MarketDeadlinePassed" {
+					err = s.UpdateBidAsProofSubmitted(context.Background(), dal.UpdateBidAsProofSubmittedParams{
+						ProofSubmitTx: "",
+						ReqID:         bid.ReqID,
+					})
+					if err != nil {
+						log.Errorf("UpdateBidAsProofSubmitted %s err: %s", bid.ReqID, err)
+					}
+				}
 				continue
 			}
 			log.Infof("SubmitProof req %s tx %s", bid.ReqID, tx.Hash().Hex())
