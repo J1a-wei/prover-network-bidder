@@ -53,7 +53,7 @@ func (s *Scheduler) Start() {
 
 func (s *Scheduler) scheduleAppRegister() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		apps, err := s.FindNotRegisteredApps(context.Background())
 		if err != nil {
 			log.Errorf("FindNotRegisteredApps err: %s", err)
@@ -125,7 +125,7 @@ func (s *Scheduler) scheduleAppRegister() {
 
 func (s *Scheduler) scheduleBid() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		reqs, err := s.FindNotProcessedProofRequests(context.Background())
 		if err != nil {
 			log.Errorf("FindNotProcessedProofRequests err: %s", err)
@@ -202,29 +202,36 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
-			proverGas, pvDigest, errCode, err := s.EstimateCost(req.AppID, inputs)
-			if err != nil {
-				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
-				if errCode == serviceapi.ErrCode_INPUT_EXCEEDED || strings.Contains(err.Error(), "panic during cost estimation") {
+			proverGas := uint64(0)
+			pvDigest := []byte{}
+
+			if s.ruleConfig.IgnoreEstimateCost == false {
+				var errCode serviceapi.ErrCode
+				proverGas, pvDigest, errCode, err = s.EstimateCost(req.AppID, inputs)
+				if err != nil {
+					log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
+					if errCode == serviceapi.ErrCode_INPUT_EXCEEDED || strings.Contains(err.Error(), "panic during cost estimation") {
+						err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+						if err != nil {
+							log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+						}
+					} else if strings.Contains(err.Error(), "cannot find app") {
+						err = s.ResetAppAsNotRegister(context.Background(), req.AppID)
+						if err != nil {
+							log.Errorf("ResetAppAsNotRegister %s err: %s", req.AppID, err)
+						}
+					}
+					continue
+				}
+				if common.BytesToHash(pvDigest) != common.HexToHash(req.PublicValuesDigest) {
+					log.Errorf("req %s pvDigest not match, %x vs %s", req.ReqID, pvDigest, req.PublicValuesDigest)
 					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 					if err != nil {
 						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
 					}
-				} else if strings.Contains(err.Error(), "cannot find app") {
-					err = s.ResetAppAsNotRegister(context.Background(), req.AppID)
-					if err != nil {
-						log.Errorf("ResetAppAsNotRegister %s err: %s", req.AppID, err)
-					}
+					continue
 				}
-				continue
-			}
-			if common.BytesToHash(pvDigest) != common.HexToHash(req.PublicValuesDigest) {
-				log.Errorf("req %s pvDigest not match, %x vs %s", req.ReqID, pvDigest, req.PublicValuesDigest)
-				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
-				if err != nil {
-					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
-				}
-				continue
+
 			}
 
 			log.Infof("req %s prover gas %d", req.ReqID, proverGas)
@@ -233,9 +240,9 @@ func (s *Scheduler) scheduleBid() {
 			proverGasPrice, _ := big.NewInt(0).SetString(s.ruleConfig.ProverGasPrice, 0)
 			myFee := big.NewInt(0).Mul(proverGasPrice, proverGasInt)
 			myFee.Div(myFee, big.NewInt(1e12)) // s.ruleConfig.ProverGasPrice with a default 1e12 denominator
-			if myFee.Sign() == 0 {
-				myFee = big.NewInt(1) // at least 1
-			}
+			// if myFee.Sign() == 0 {
+			// 	myFee = big.NewInt(1) // at least 1
+			// }
 			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
 
 			if myFee.Cmp(maxFee) == 1 {
@@ -310,6 +317,10 @@ func checkInputSize(inputUrl string, maxSize uint64) (bool, error) {
 	if maxSize == 0 {
 		return true, nil // 0 means no cap
 	}
+	if strings.Contains(inputUrl, "localhost") {
+		return false, fmt.Errorf("input url contains localhost")
+	}
+
 	resp, err := http.Head(inputUrl)
 	if err != nil {
 		return false, fmt.Errorf("http HEAD %s err: %w", inputUrl, err)

@@ -24,6 +24,10 @@ type RuleConfig struct {
 	MaxInputSize uint64 `mapstructure:"max_input_size"`
 	// accepts only those requests that the duration from prove start time to deadline not less than `ProveMinDuration`
 	ProveMinDuration uint64 `mapstructure:"prove_min_duration"`
+
+	// 忽略预检测
+	IgnoreEstimateCost bool `mapstructure:"ignore_estimate_cost"`
+
 	// default empty means no limit, if not empty, only process those requests targeted to the whitelist apps
 	VkWhitelist []string `mapstructure:"vk_whitelist"`
 	// if not empty, skip the requests targeted to the blacklist apps

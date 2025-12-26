@@ -2,8 +2,6 @@ module github.com/brevis-network/prover-network-bidder
 
 go 1.23.0
 
-toolchain go1.23.12
-
 require (
 	github.com/celer-network/goutils v0.2.1
 	github.com/cenkalti/backoff/v5 v5.0.3
