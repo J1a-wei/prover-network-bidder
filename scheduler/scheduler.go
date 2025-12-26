@@ -125,7 +125,7 @@ func (s *Scheduler) scheduleAppRegister() {
 
 func (s *Scheduler) scheduleBid() {
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		reqs, err := s.FindNotProcessedProofRequests(context.Background())
 		if err != nil {
 			log.Errorf("FindNotProcessedProofRequests err: %s", err)
@@ -354,7 +354,7 @@ func retrieveInputs(inputData string, inputUrl string) ([]byte, error) {
 
 func (s *Scheduler) scheduleReveal() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		bids, err := s.FindToBeRevealedBid(context.Background(), time.Now().Unix())
 		if err != nil {
 			log.Errorf("FindToBeRevealedBid err: %s", err)
